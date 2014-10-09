@@ -2,6 +2,7 @@
 module.exports = function (SIP, environment) {
 
 var DTMF = require('./Session/DTMF')(SIP);
+var RFC4028 = require('./RFC4028')(SIP.Timers);
 
 var Session, InviteServerContext, InviteClientContext,
  C = {
@@ -823,8 +824,10 @@ Session.prototype = {
       this.replacee.emit('replaced', this);
       this.replacee.terminate();
     }
-    this.emit('accepted', response, cause);
-    return this;
+    if (response) {
+      RFC4028.updateState(this.dialog, response, SIP.Parser.parseMessage, this.ua);
+    }
+    return this.emit('accepted', response, cause);
   },
 
   terminated: function(message, cause) {
@@ -866,6 +869,20 @@ InviteServerContext = function(ua, request) {
     this.renderbody = request.body;
     this.rendertype = contentType;
   }
+
+  // TODO test
+  // http://tools.ietf.org/html/rfc4028#section-9
+  if (RFC4028.hasSmallMinSE(request)) {
+    request.reply(422, null, ['Min-SE: ' + RFC4028.localMinSE]);
+    return;
+  }
+
+  //TODO: move this into media handler
+  SIP.Hacks.Firefox.cannotHandleExtraWhitespace(request);
+  SIP.Hacks.AllBrowsers.maskDtls(request);
+
+  SIP.Utils.augment(this, SIP.ServerContext, [ua, request]);
+  SIP.Utils.augment(this, SIP.Session, [ua.configuration.mediaHandlerFactory]);
 
   this.status = C.STATUS_INVITE_RECEIVED;
   this.from_tag = request.from_tag;
@@ -1160,6 +1177,19 @@ InviteServerContext.prototype = {
 
         extraHeaders.push('Contact: ' + self.contact);
         extraHeaders.push('Allow: ' + SIP.UA.C.ALLOWED_METHODS.toString());
+
+        // TODO test
+        // http://tools.ietf.org/html/rfc4028#section-9
+        var supportedOptions = request.parseHeader('Supported') || [];
+        var sessionExpires = request.parseHeader('Session-Expires') || {};
+        var interval = sessionExpires.deltaSeconds;
+        if (interval) {
+          var refresher = sessionExpires.refresher || 'uas';
+          extraHeaders.push('Session-Expires: ' + interval + ';' + refresher);
+          if (refresher === 'uac' || supportedOptions.indexOf('timer') >= 0) {
+            extraHeaders.push('Require: timer');
+          }
+        }
 
         if(!self.hasOffer) {
           self.hasOffer = true;
