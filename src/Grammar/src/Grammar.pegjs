@@ -373,6 +373,19 @@ Reason_Phrase   = (reserved / unreserved / escaped
 // HEADERS
 //=======================
 
+// Allow
+
+Allow  =  value:(
+                first:token
+                rest:(COMMA r:token {return r;})*
+                { return list(first, rest); }
+              )?
+              {
+                if (options.startRule === 'Allow') {
+                  options.data = value || [];
+                }
+              }
+
 // Allow-Events
 
 Allow_Events = event_type (COMMA event_type)*

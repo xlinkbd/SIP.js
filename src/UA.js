@@ -31,7 +31,8 @@ var UA,
       'OPTIONS',
       'INFO',
       'NOTIFY',
-      'REFER'
+      'REFER',
+      'UPDATE'
     ],
 
     ACCEPTED_BODY_TYPES: [
@@ -40,7 +41,17 @@ var UA,
     ],
 
     MAX_FORWARDS: 70,
-    TAG_LENGTH: 10
+    TAG_LENGTH: 10,
+
+    // configuration option values to specify a choice of session timer refresher
+    REFRESHER_UAC: 'uac',
+    REFRESHER_UAS: 'uas',
+    REFRESHER_OMIT: 'omit',
+
+    // recommended: https://tools.ietf.org/html/rfc4028#section-4
+    SESSION_EXPIRES_DEFAULT: 1800,
+    // required: https://tools.ietf.org/html/rfc4028#section-5
+    SESSION_EXPIRES_MIN: 90
   };
 
 UA = function(configuration) {
@@ -960,6 +971,13 @@ UA.prototype.loadConfig = function(configuration) {
       }),
 
       allowLegacyNotifications: false,
+
+      sessionTimer: SIP.C.supported.UNSUPPORTED,
+      sessionTimerInitialRequest: false,
+      sessionTimerInterval: C.SESSION_EXPIRES_DEFAULT,
+      sessionTimerMinSe: C.SESSION_EXPIRES_MIN,
+      sessionTimerUacRefresherChoice: C.REFRESHER_OMIT,
+      sessiomTimerUasRefresherChoice: C.REFRESHER_UAS
     };
 
   // Pre-Configuration
@@ -1142,6 +1160,10 @@ UA.prototype.loadConfig = function(configuration) {
 
   return;
 };
+
+UA.prototype.isSessionTimerSupported = function() {
+  return this.configuration.sessionTimer === SIP.C.supported.SUPPORTED;
+}
 
 /**
  * Configuration checker.
@@ -1503,6 +1525,61 @@ UA.prototype.getConfigurationCheck = function () {
         if (typeof contactName === 'string') {
           return contactName;
         }
+      }
+    },
+
+    // user of Requre in the initial session timer request is not recommended and not implemented in SIP.js
+    sessionTimer: function(sessionTimer) {
+      if(sessionTimer === SIP.C.supported.SUPPORTED || sessionTimer === SIP.C.supported.REQUIRED) {
+        return SIP.C.supported.SUPPORTED;
+      } else  {
+        return SIP.C.supported.UNSUPPORTED;
+      }
+    },
+
+    // If true, both UAC and UAS will make the initial session timer request.
+    sessionTimerInitialRequest: function(sessionTimerInitialRequest) {
+      if (sessionTimerInitialRequest === true) {
+        return true;
+      } else {
+        return false;
+      }
+    },
+
+    sessionTimerInterval: function(sessionTimerInterval) {
+      if(SIP.Utils.isDecimal(sessionTimerInterval)) {
+        return Math.max(C.SESSION_EXPIRES_MIN, sessionTimerInterval)
+      } else {
+        return C.SESSION_EXPIRES_DEFAULT;
+      }
+    },
+
+    sessionTimerMinSe: function(sessionTimerMinSe) {
+      if(SIP.Utils.isDecimal(sessionTimerMinSe)) {
+        return Math.max(C.SESSION_EXPIRES_MIN, sessionTimerMinSe)
+      } else {
+        return C.SESSION_EXPIRES_MIN;
+      }
+    },
+
+    // https://tools.ietf.org/html/rfc4028#section-7.1
+    sessionTimerUacRefresherChoice : function(sessionTimerUacRefresherChoice) {
+      if (sessionTimerUacRefresherChoice === C.REFRESHER_UAC) {
+        return C.REFRESHER_UAC;
+      } else if (sessionTimerUacRefresherChoice === C.REFRESHER_UAS) {
+        return C.REFRESHER_UAS;
+      } else {
+        return C.REFRESHER_OMIT;
+      }
+    },
+
+    // https://tools.ietf.org/html/rfc4028#section-9
+    // The UAS MUST set the value of the refresher parameter in the Session-Expires header field in the 2xx response
+    sessionTimerUasRefresherChoice: function(sessionTimerUasRefresherChoice) {
+      if (sessionTimerUasRefresherChoice === C.REFRESHER_UAC) {
+        return C.REFRESHER_UAC;
+      } else {
+        return C.REFRESHER_UAS;
       }
     }
   };
