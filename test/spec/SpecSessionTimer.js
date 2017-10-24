@@ -1,7 +1,7 @@
 /*
 
 These tests will have to change.  After I began, I realized I needed more
-UA configuration options to express the behavior I wanted. 
+UA configuration options to express the behavior I wanted.
 
 UAC (cannot be configured to send 'timer' in the Require header)
   1. Sends an INVITE request with a Session-Expires header
@@ -27,16 +27,8 @@ UAS
 */
 
 // RFC 4028
-describe('Session Timers', function() {
+xdescribe('Session Timers', function() {
   var UA_CONFIG_KEY_SUPPORTED, UA_CONFIG_KEY_REFRESHER_UAC, UA_CONFIG_KEY_REFRESHER_UAS;
-
-  // silence logs in test results
-  function silenceLogs() {
-    SIP.LoggerFactory.prototype.debug =
-    SIP.LoggerFactory.prototype.log =
-    SIP.LoggerFactory.prototype.warn =
-    SIP.LoggerFactory.prototype.error = function f() {};
-  }
 
   // supported header is added in OutgoingRequest.toString (dunno why)
   function isSupported(request) {
@@ -55,7 +47,6 @@ describe('Session Timers', function() {
   UA_CONFIG_KEY_SUPPORTED = 'sessionTimers';
   UA_CONFIG_KEY_REFRESHER_UAC = 'sessionTimerUACRefresher';
   UA_CONFIG_KEY_REFRESHER_UAS = 'sessionTimerUASRefresher';
-  silenceLogs();
 
   // https://tools.ietf.org/html/rfc4028#section-7
   describe("UAC", function() {
@@ -125,8 +116,10 @@ describe('Session Timers', function() {
         });
         it("receives a 422 INVITE response", function() {
         });
+      });
     });
   });
+
   describe("UAS", function() {
     describe("when session timers are unsupported", function() {
         describe("sends INVITE responses", function() {

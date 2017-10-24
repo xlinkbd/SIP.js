@@ -2,7 +2,7 @@
 module.exports = function (SIP, environment) {
 
 var DTMF = require('./Session/DTMF')(SIP);
-var RFC4028 = require('./RFC4028')(SIP.Timers);
+//var RFC4028 = require('./RFC4028')(SIP.Timers);
 
 var Session, InviteServerContext, InviteClientContext,
  C = {
@@ -830,20 +830,22 @@ Session.prototype = {
       this.replacee.emit('replaced', this);
       this.replacee.terminate();
     }
+    /*
     if (response) {
       var sessionExpires = response.parseHeader('Session-Expires');
       if (sessionExpires) {
-
+        this.logger.debug('delete this');
       } else {
         // session timer still works even if only one side is implementing
-        if (ua.configuration.sessionTimerInitialRequest) {
-
+        if (this.ua.configuration.sessionTimerInitialRequest) {
+          this.logger.debug('delete this');
         } else {
+          this.logger.debug('delete this');
           // clear state
         }
       }
       RFC4028.updateState(this.dialog, response, SIP.Parser.parseMessage, this.ua);
-    }
+    }*/
     this.emit('accepted', response, cause);
     return this;
   },
@@ -883,7 +885,7 @@ Session.prototype = {
     setSessionTimer(response)
     clearSessionTimer
     onSessionRefresh
-    onSessionTimeout    
+    onSessionTimeout
   */
 
   sendSessionRefreshResponse: function() {
@@ -891,9 +893,12 @@ Session.prototype = {
   },
 
   startSessionTimer: function(response) {
+    var interval = response.interval, //XXX JJC this is likely incorrect
+        refresher = response.refresher, //XXX JJC this is likely incorrect
+        intervalMilliseconds = interval * 1000,
+        before = Math.min(32 * 1000, intervalMilliseconds / 3);
 
     this.dialog.sessionTimerState = this.dialog.sessionTimerState || {};
-    intervalMilliseconds = interval * 1000;
     /*
     https://tools.ietf.org/html/rfc4028#section-10
     Similarly, if the side not performing refreshes does not receive a
@@ -902,35 +907,36 @@ Session.prototype = {
     expiration.  The minimum of 32 seconds and one third of the session
     interval is RECOMMENDED.
     */
-    before = Math.min(32 * 1000, intervalMilliseconds / 3);
     this.dialog.sessionTimerState = this.dialog.sessionTimerState || {};
     this.dialog.sessionTimerState.interval = interval;
     this.dialog.sessionTimerState.refresher = refresher;
-    this.dialog.sessionTimerState.sessionTimerId = Timers.setTimeout(function sendBye () {
+    this.dialog.sessionTimerState.sessionTimerId = SIP.Timers.setTimeout(function sendBye () {
     }, intervalMilliseconds - before);
   },
 
   stopSessionTimer: function() {
     if (this.dialog.sessionTimerState && this.dialog.sessionTimerState.sessionTimerId) {
-      Timers.clearTimeout(dialog.sessionTimerState.timeout);
+      SIP.Timers.clearTimeout(this.dialog.sessionTimerState.timeout);
       this.dialog.sessionTimerState.sessionTimerId = null;
     }
-  }
+  },
 
   onSessionTimer: function() {
-
+    return;
   },
 
   startRefreshTimer: function() {
-
+    return;
   },
 
   stopRefreshTimer: function() {
-
+    return;
   },
 
   onRefreshTimer: function() {
-    var interval;
+    var interval,
+        intervalMilliseconds = interval * 1000,
+        self = this;
 
     if (!this.dialog || !this.dialog.sessionTimerState) {
       self.logger.error('session timer fired with session timer state undefined');
@@ -938,21 +944,18 @@ Session.prototype = {
     }
 
     if (this.dialog.sessionTimerState.isRefresher) {
-      dialog.sessionTimerState.timeout = Timers.setInterval(function sendRefresh () {
-      var exists = dialog.owner.ua.dialogs[dialog.id.toString()] || false;
+      this.dialog.sessionTimerState.timeout = SIP.Timers.setInterval(function sendRefresh() {
+      var exists = self.dialog.owner.ua.dialogs[self.dialog.id.toString()] || false;
       if (exists) {
-        dialog.sendRequest(self, "UPDATE", { extraHeaders: ["Session-Expires: " + interval]});
+        self.dialog.sendRequest(this, "UPDATE", { extraHeaders: ["Session-Expires: " + interval]});
       } else {
-        Timers.clearInterval(dialog.sessionTimerState.timeout);
+        SIP.Timers.clearInterval(self.dialog.sessionTimerState.timeout);
       }
     }, intervalMilliseconds / 2);
     } else {
-
-    }   
+      this.logger.debug('delete this');
+    }
   }
-
-
-
 };
 
 
@@ -975,8 +978,8 @@ InviteServerContext = function(ua, request) {
   }
 
   if (this.ua.configuration.sessionTimer === SIP.C.supported.SUPPORTED) {
-    if (message.hasHeader('Session-Expires')) {
-      var sessionExpires = message.parseHeader('Session-Expires');
+    if (request.hasHeader('Session-Expires')) {
+      var sessionExpires = request.parseHeader('Session-Expires');
       if (sessionExpires) {
         // http://tools.ietf.org/html/rfc4028#section-9
         if (sessionExpires.deltaSeconds < this.ua.configuration.sessionTimerMinSe) {
@@ -987,13 +990,6 @@ InviteServerContext = function(ua, request) {
       }
     }
   }
-
-  //TODO: move this into media handler
-  SIP.Hacks.Firefox.cannotHandleExtraWhitespace(request);
-  SIP.Hacks.AllBrowsers.maskDtls(request);
-
-  SIP.Utils.augment(this, SIP.ServerContext, [ua, request]);
-  SIP.Utils.augment(this, SIP.Session, [ua.configuration.mediaHandlerFactory]);
 
   this.status = C.STATUS_INVITE_RECEIVED;
   this.from_tag = request.from_tag;
@@ -1289,24 +1285,25 @@ InviteServerContext.prototype = {
         extraHeaders.push('Contact: ' + self.contact);
         extraHeaders.push('Allow: ' + SIP.UA.C.ALLOWED_METHODS.toString());
 
-        if (ua.isSessionTimerSupported) {
+        /*
+        if (this.ua.isSessionTimerSupported) {
           var sessionExpires = request.parseHeader('Session-Expires') ||  {};
           var minSE = request.parseHeader('Min-SE') || {};
           // UAC made initial session timer request
           if (sessionExpires.deltaSeconds) {
-            sessionExpires.refresher = sessionExpires.refresher || ua.configuration.sessionTimerUasRefresherChoice;
+            sessionExpires.refresher = sessionExpires.refresher || this.ua.configuration.sessionTimerUasRefresherChoice;
             extraHeaders.push('Session-Expires: ' + sessionExpires.deltaSeconds + ';refresher=' + sessionExpires.refresher);
           // UAS is configured to make the initial request
-          } else if (ua.configuration.sessionTimerInitialRequest && request.isSessionTimerSupported) {
+          } else if (this.ua.configuration.sessionTimerInitialRequest && request.isSessionTimerSupported) {
             if (minSE.deltaSeconds) {
-              sessionExpires.deltaSeconds = Math.max(minSE.deltaSeconds, ua.configuration.sessionTimerInterval);
+              sessionExpires.deltaSeconds = Math.max(minSE.deltaSeconds, this.ua.configuration.sessionTimerInterval);
             } else {
-              sessionExpires.deltaSeconds = ua.configuration.sessionTimerInterval;
+              sessionExpires.deltaSeconds = this.ua.configuration.sessionTimerInterval;
             }
-            sessionExpires.refresher = ua.configuration.sessionTimerUasRefresherChoice;
+            sessionExpires.refresher = this.ua.configuration.sessionTimerUasRefresherChoice;
             extraHeaders.push('Session-Expires: ' + sessionExpires.deltaSeconds + ';refresher=' + sessionExpires.refresher);
           }
-        }
+        }*/
 
         if(!self.hasOffer) {
           self.hasOffer = true;

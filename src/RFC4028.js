@@ -1,3 +1,4 @@
+"use strict";
 var localMinSE = 90;
 
 module.exports = function (Timers) {
@@ -55,11 +56,11 @@ function updateState (dialog, response, parseMessage, ua) {
 }
 
 function receiveResponse(response) {
-  /* jshint unused: false */
+  return response;
 }
 
 function onDialogError(response) {
-  /* jshint unused: false */
+  return response;
 }
 
 return {

@@ -1161,9 +1161,9 @@ UA.prototype.loadConfig = function(configuration) {
   return;
 };
 
-UA.prototype.isSessionTimerSupported = function() {
+UA.prototype.isSessionTimerSupported = function () {
   return this.configuration.sessionTimer === SIP.C.supported.SUPPORTED;
-}
+};
 
 /**
  * Configuration checker.
@@ -1528,7 +1528,7 @@ UA.prototype.getConfigurationCheck = function () {
       }
     },
 
-    // user of Requre in the initial session timer request is not recommended and not implemented in SIP.js
+    // user of Require in the initial session timer request is not recommended and not implemented in SIP.js
     sessionTimer: function(sessionTimer) {
       if(sessionTimer === SIP.C.supported.SUPPORTED || sessionTimer === SIP.C.supported.REQUIRED) {
         return SIP.C.supported.SUPPORTED;
@@ -1548,7 +1548,7 @@ UA.prototype.getConfigurationCheck = function () {
 
     sessionTimerInterval: function(sessionTimerInterval) {
       if(SIP.Utils.isDecimal(sessionTimerInterval)) {
-        return Math.max(C.SESSION_EXPIRES_MIN, sessionTimerInterval)
+        return Math.max(C.SESSION_EXPIRES_MIN, sessionTimerInterval);
       } else {
         return C.SESSION_EXPIRES_DEFAULT;
       }
@@ -1556,7 +1556,7 @@ UA.prototype.getConfigurationCheck = function () {
 
     sessionTimerMinSe: function(sessionTimerMinSe) {
       if(SIP.Utils.isDecimal(sessionTimerMinSe)) {
-        return Math.max(C.SESSION_EXPIRES_MIN, sessionTimerMinSe)
+        return Math.max(C.SESSION_EXPIRES_MIN, sessionTimerMinSe);
       } else {
         return C.SESSION_EXPIRES_MIN;
       }
