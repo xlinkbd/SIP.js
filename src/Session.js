@@ -2,7 +2,7 @@
 module.exports = function (SIP, environment) {
 
 var DTMF = require('./Session/DTMF')(SIP);
-//var RFC4028 = require('./RFC4028')(SIP.Timers);
+//var SessionTimer = require('./RFC4028')(SIP.Timers);
 
 var Session, InviteServerContext, InviteClientContext,
  C = {
@@ -844,7 +844,7 @@ Session.prototype = {
           // clear state
         }
       }
-      RFC4028.updateState(this.dialog, response, SIP.Parser.parseMessage, this.ua);
+      SessionTimer.updateState(this.dialog, response, SIP.Parser.parseMessage, this.ua);
     }*/
     this.emit('accepted', response, cause);
     return this;
